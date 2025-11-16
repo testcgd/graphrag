@@ -1,0 +1,199 @@
+# Example: Using Different Models for Indexing vs Querying with Ollama
+#
+# This configuration demonstrates how to use different models for:
+# - Indexing (building the knowledge graph): Fast, cheaper local models
+# - Querying (answering questions): More powerful models for better results
+#
+# Benefits:
+# - Save costs/time during indexing with faster models
+# - Get better quality answers during querying with more powerful models
+# - Mix local and cloud models based on your needs
+
+# =============================================================================
+# MODEL DEFINITIONS
+# =============================================================================
+
+models:
+  # --- Query Models (More Powerful) ---
+  # These models are used when answering user questions
+  # Use more capable models for better reasoning and responses
+
+  query_chat_model:
+    type: ollama_chat
+    model: llama3.1:70b  # Larger model for better quality answers
+    api_base: http://localhost:11434/v1
+    max_tokens: 4000
+    temperature: 0.1  # Low temperature for more focused answers
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 2  # Lower concurrency for large model
+    async_mode: threaded
+
+  query_embedding_model:
+    type: ollama_embedding
+    model: mxbai-embed-large  # Higher quality embeddings (1024 dim)
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 4
+    async_mode: threaded
+
+  # --- Index Models (Faster, More Efficient) ---
+  # These models are used during graph construction
+  # Use faster models to speed up indexing process
+
+  index_chat_model:
+    type: ollama_chat
+    model: llama3.2  # Smaller, faster model for extraction
+    api_base: http://localhost:11434/v1
+    max_tokens: 2000
+    temperature: 0.0  # Deterministic for consistent extraction
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 8  # Higher concurrency for faster processing
+    async_mode: threaded
+
+  index_embedding_model:
+    type: ollama_embedding
+    model: nomic-embed-text  # Fast, efficient embeddings (768 dim)
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 8
+    async_mode: threaded
+
+  # --- Default Models (Fallback) ---
+  # Set defaults to query models for any unspecified operations
+  default_chat_model:
+    type: ollama_chat
+    model: llama3.1:70b
+    api_base: http://localhost:11434/v1
+    max_tokens: 4000
+    temperature: 0.1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 2
+    async_mode: threaded
+
+  default_embedding_model:
+    type: ollama_embedding
+    model: mxbai-embed-large
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 4
+    async_mode: threaded
+
+# =============================================================================
+# INDEXING CONFIGURATION (Uses Fast Models)
+# =============================================================================
+
+# Entity Extraction - Extract entities and relationships from text
+extract_graph:
+  model_id: index_chat_model  # Use faster model for extraction
+  max_gleanings: 1  # Reduce iterations for faster indexing
+
+# Entity Summarization - Create descriptions for entities
+summarize_descriptions:
+  model_id: index_chat_model  # Use faster model for summarization
+
+# Community Detection & Reports - Hierarchical clustering and summaries
+community_reports:
+  model_id: index_chat_model  # Use faster model for community reports
+  max_length: 1500
+  max_input_length: 6000
+
+# Claim Extraction - Extract factual claims (optional)
+extract_claims:
+  enabled: true
+  model_id: index_chat_model  # Use faster model for claims
+
+# Text Embeddings - Create vector representations
+embed_text:
+  model_id: index_embedding_model  # Use faster embedding model
+  batch_size: 16
+  batch_max_tokens: 8000
+
+# =============================================================================
+# QUERY CONFIGURATION (Uses Powerful Models)
+# =============================================================================
+
+# Local Search - Context-focused search within specific community
+local_search:
+  chat_model_id: query_chat_model  # Use powerful model for better answers
+  embedding_model_id: query_embedding_model  # Use quality embeddings
+  text_unit_prop: 0.5
+  community_prop: 0.1
+  conversation_history_max_turns: 5
+  top_k_entities: 10
+  top_k_relationships: 10
+  max_tokens: 12000
+  temperature: 0.1
+
+# Global Search - High-level search across all communities
+global_search:
+  chat_model_id: query_chat_model  # Use powerful model for synthesis
+  max_tokens: 12000
+  data_max_tokens: 12000
+  map_max_tokens: 1000
+  reduce_max_tokens: 2000
+  temperature: 0.1
+
+# DRIFT Search - Follow-up question expansion
+drift_search:
+  chat_model_id: query_chat_model  # Use powerful model for reasoning
+  embedding_model_id: query_embedding_model
+  n_depth: 2
+  drift_k_followups: 5
+  primer_folds: 3
+  temperature: 0.1
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+
+chunking:
+  chunk_size: 1200
+  chunk_overlap: 100
+
+snapshots:
+  graphml: false
+  embeddings: false  # Disable snapshots for faster indexing
+
+# =============================================================================
+# NOTES
+# =============================================================================
+#
+# Model Requirements:
+# 1. Pull indexing models (fast):
+#    ollama pull llama3.2
+#    ollama pull nomic-embed-text
+#
+# 2. Pull query models (powerful):
+#    ollama pull llama3.1:70b
+#    ollama pull mxbai-embed-large
+#
+# Memory Requirements:
+# - Indexing: ~8-16GB RAM (concurrent small models)
+# - Querying: ~40GB+ RAM (large 70B model)
+#
+# Workflow:
+# 1. Run indexing with fast models (one-time):
+#    python -m graphrag.index --root ./project
+#
+# 2. Run queries with powerful models (ongoing):
+#    python -m graphrag.query --root ./project --method local "question"
+#
+# Alternative Configurations:
+#
+# A) Budget Setup (8GB RAM):
+#    index_chat_model: llama3.2:1b
+#    query_chat_model: llama3.2
+#
+# B) Cloud + Local Hybrid:
+#    index_chat_model: ollama/llama3.2 (local, fast)
+#    query_chat_model: openai/gpt-4 (cloud, powerful)
+#
+# C) All-Local High-End (64GB RAM):
+#    index_chat_model: qwen2.5:14b
+#    query_chat_model: qwen2.5:72b

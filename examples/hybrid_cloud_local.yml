@@ -1,0 +1,191 @@
+# Example: Hybrid Configuration - Cloud for Querying, Local for Indexing
+#
+# This configuration demonstrates a cost-effective hybrid approach:
+# - Use FREE local Ollama models for indexing (one-time, bulk operations)
+# - Use PAID cloud models (OpenAI/Azure) for querying (ongoing, quality-critical)
+#
+# Benefits:
+# - Minimize API costs by avoiding expensive indexing operations
+# - Maintain high-quality query responses with production-grade models
+# - Faster indexing with local GPU acceleration
+# - No cloud API rate limits during indexing
+
+# =============================================================================
+# MODEL DEFINITIONS
+# =============================================================================
+
+models:
+  # --- Cloud Models for Querying (High Quality) ---
+
+  cloud_chat_model:
+    type: openai_chat
+    api_key: ${OPENAI_API_KEY}  # Set via environment variable
+    model: gpt-4o  # Latest GPT-4 Omni for best quality
+    max_tokens: 4000
+    temperature: 0.1
+    tokens_per_minute: 80000
+    requests_per_minute: 500
+    concurrent_requests: 10
+    model_supports_json: true
+    async_mode: threaded
+
+  cloud_embedding_model:
+    type: openai_embedding
+    api_key: ${OPENAI_API_KEY}
+    model: text-embedding-3-large  # Latest embedding model
+    tokens_per_minute: 1000000
+    requests_per_minute: 3000
+    concurrent_requests: 10
+    async_mode: threaded
+
+  # --- Local Models for Indexing (Cost-Free) ---
+
+  local_chat_model:
+    type: ollama_chat
+    model: qwen2.5:14b  # Good quality, reasonable speed
+    api_base: http://localhost:11434/v1
+    max_tokens: 2000
+    temperature: 0.0
+    tokens_per_minute: 0  # Unlimited for local
+    requests_per_minute: 0
+    concurrent_requests: 8
+    model_supports_json: false
+    async_mode: threaded
+
+  local_embedding_model:
+    type: ollama_embedding
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 8
+    async_mode: threaded
+
+  # --- Default Models ---
+  # Point to cloud models so queries use high-quality models by default
+
+  default_chat_model:
+    type: openai_chat
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4o
+    max_tokens: 4000
+    temperature: 0.1
+    tokens_per_minute: 80000
+    requests_per_minute: 500
+    concurrent_requests: 10
+    model_supports_json: true
+    async_mode: threaded
+
+  default_embedding_model:
+    type: openai_embedding
+    api_key: ${OPENAI_API_KEY}
+    model: text-embedding-3-large
+    tokens_per_minute: 1000000
+    requests_per_minute: 3000
+    concurrent_requests: 10
+    async_mode: threaded
+
+# =============================================================================
+# INDEXING CONFIGURATION (Uses Local Ollama Models)
+# =============================================================================
+
+extract_graph:
+  model_id: local_chat_model  # FREE: Use local Ollama
+  max_gleanings: 1
+
+summarize_descriptions:
+  model_id: local_chat_model  # FREE: Use local Ollama
+
+community_reports:
+  model_id: local_chat_model  # FREE: Use local Ollama
+  max_length: 2000
+  max_input_length: 8000
+
+extract_claims:
+  enabled: true
+  model_id: local_chat_model  # FREE: Use local Ollama
+
+embed_text:
+  model_id: local_embedding_model  # FREE: Use local Ollama embeddings
+  batch_size: 16
+
+# =============================================================================
+# QUERY CONFIGURATION (Uses Cloud OpenAI Models)
+# =============================================================================
+
+local_search:
+  chat_model_id: cloud_chat_model  # PAID: Use GPT-4 for best answers
+  embedding_model_id: cloud_embedding_model  # PAID: Use OpenAI embeddings
+  text_unit_prop: 0.5
+  community_prop: 0.1
+  top_k_entities: 10
+  top_k_relationships: 10
+  max_tokens: 12000
+
+global_search:
+  chat_model_id: cloud_chat_model  # PAID: Use GPT-4 for synthesis
+  max_tokens: 12000
+  data_max_tokens: 12000
+  map_max_tokens: 1000
+  reduce_max_tokens: 2000
+
+drift_search:
+  chat_model_id: cloud_chat_model  # PAID: Use GPT-4 for follow-ups
+  embedding_model_id: cloud_embedding_model
+  n_depth: 2
+  drift_k_followups: 5
+
+# =============================================================================
+# NOTES & SETUP
+# =============================================================================
+#
+# Prerequisites:
+#
+# 1. Install and configure Ollama for indexing:
+#    curl -fsSL https://ollama.ai/install.sh | sh
+#    ollama pull qwen2.5:14b
+#    ollama pull nomic-embed-text
+#
+# 2. Set OpenAI API key for querying:
+#    export OPENAI_API_KEY="sk-..."
+#
+# Cost Analysis (Example: 1M token corpus):
+#
+# Traditional (All Cloud):
+# - Indexing: ~$50-100 (GPT-4 for extraction/summarization)
+# - Querying: ~$0.50 per query (GPT-4)
+# - Total first month (100 queries): $100-150
+#
+# Hybrid (This Config):
+# - Indexing: $0 (Local Ollama)
+# - Querying: ~$0.50 per query (GPT-4)
+# - Total first month (100 queries): $50
+# - Savings: 50-67%
+#
+# Performance Trade-offs:
+# - Indexing may be slightly lower quality with local models
+# - Query quality is identical (using same GPT-4)
+# - Indexing is one-time, so lower quality is acceptable
+# - Queries are frequent, so high quality is critical
+#
+# Alternative: Azure OpenAI for Querying
+#
+# Replace cloud models with:
+#   cloud_chat_model:
+#     type: azure_openai_chat
+#     api_key: ${AZURE_OPENAI_API_KEY}
+#     api_base: ${AZURE_OPENAI_ENDPOINT}
+#     api_version: "2024-02-15-preview"
+#     deployment_name: ${AZURE_OPENAI_DEPLOYMENT}
+#     model: gpt-4
+#
+# When to Use This Configuration:
+# ✓ You have a local GPU for Ollama
+# ✓ You want to minimize ongoing API costs
+# ✓ Indexing quality is less critical than query quality
+# ✓ You index infrequently but query frequently
+#
+# When NOT to Use:
+# ✗ You need highest quality indexing (use cloud for both)
+# ✗ You don't have hardware for local models
+# ✗ Your organization requires all processing in cloud

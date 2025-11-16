@@ -270,8 +270,130 @@ python -m graphrag.index --root ./my_project
 python -m graphrag.query --root ./my_project --method local "What are the main themes?"
 ```
 
+## Advanced: Using Different Models for Indexing vs Querying
+
+GraphRAG supports using different models for indexing (building the graph) versus querying (answering questions). This is useful for:
+
+- **Cost Optimization**: Use faster/cheaper models for one-time indexing
+- **Performance**: Use larger models for queries where quality matters most
+- **Resource Management**: Use smaller models when memory is limited
+
+### Example: Fast Indexing, Quality Queries
+
+```yaml
+models:
+  # Fast model for indexing (used once)
+  index_model:
+    type: ollama_chat
+    model: llama3.2
+    api_base: http://localhost:11434/v1
+    concurrent_requests: 8
+
+  # Powerful model for queries (used repeatedly)
+  query_model:
+    type: ollama_chat
+    model: llama3.1:70b
+    api_base: http://localhost:11434/v1
+    concurrent_requests: 2
+
+  # Shared embedding model
+  embedding_model:
+    type: ollama_embedding
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+
+  # Default models (used by queries)
+  default_chat_model:
+    type: ollama_chat
+    model: llama3.1:70b
+    api_base: http://localhost:11434/v1
+
+  default_embedding_model:
+    type: ollama_embedding
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+
+# Indexing configuration (uses fast model)
+extract_graph:
+  model_id: index_model
+
+summarize_descriptions:
+  model_id: index_model
+
+community_reports:
+  model_id: index_model
+
+embed_text:
+  model_id: embedding_model
+
+# Query configuration (uses powerful model)
+local_search:
+  chat_model_id: query_model
+  embedding_model_id: embedding_model
+
+global_search:
+  chat_model_id: query_model
+```
+
+### Example: Hybrid Cloud-Local Setup
+
+Save costs by using free local models for indexing, while using cloud models for queries:
+
+```yaml
+models:
+  # Local Ollama for indexing (FREE)
+  local_index:
+    type: ollama_chat
+    model: qwen2.5:14b
+    api_base: http://localhost:11434/v1
+
+  # Cloud OpenAI for queries (PAID, high quality)
+  cloud_query:
+    type: openai_chat
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4o
+
+  local_embedding:
+    type: ollama_embedding
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+
+  cloud_embedding:
+    type: openai_embedding
+    api_key: ${OPENAI_API_KEY}
+    model: text-embedding-3-large
+
+  default_chat_model:
+    type: openai_chat
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4o
+
+  default_embedding_model:
+    type: openai_embedding
+    api_key: ${OPENAI_API_KEY}
+    model: text-embedding-3-large
+
+# Indexing uses local models (no cost)
+extract_graph:
+  model_id: local_index
+
+embed_text:
+  model_id: local_embedding
+
+# Querying uses cloud models (high quality)
+local_search:
+  chat_model_id: cloud_query
+  embedding_model_id: cloud_embedding
+```
+
+**See detailed examples:**
+- `examples/ollama_mixed_models.yml` - Different Ollama models for index vs query
+- `examples/hybrid_cloud_local.yml` - Local indexing, cloud querying
+- `examples/CONFIGURE_DIFFERENT_MODELS.md` - Complete guide
+
 ## Additional Resources
 
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [Ollama Model Library](https://ollama.ai/library)
 - [GraphRAG Documentation](https://microsoft.github.io/graphrag/)
+- [Configure Different Models Guide](./CONFIGURE_DIFFERENT_MODELS.md)
