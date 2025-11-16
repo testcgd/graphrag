@@ -1,0 +1,384 @@
+# Example: Qwen Models for GraphRAG (中文优化配置)
+#
+# Qwen (通义千问) is Alibaba's excellent multilingual LLM series
+# with exceptional Chinese language support. This configuration shows
+# how to use Qwen models with Ollama for GraphRAG.
+#
+# Qwen 优势:
+# - 优秀的中文理解和生成能力
+# - 支持超长上下文 (最高 128K tokens)
+# - 开源且性能强大
+# - 多种规模可选 (0.5B - 72B)
+#
+# Prerequisites:
+# 1. Install Ollama: https://ollama.ai
+# 2. Pull Qwen models: ollama pull qwen2.5:14b
+# 3. Pull embedding model: ollama pull bge-m3
+
+# =============================================================================
+# QWEN MODEL OPTIONS
+# =============================================================================
+#
+# Qwen2.5 Series (Latest, Recommended):
+# - qwen2.5:0.5b  - Tiny, ultra-fast (512 MB)
+# - qwen2.5:1.5b  - Small, very fast (934 MB)
+# - qwen2.5:3b    - Compact, fast (1.9 GB)
+# - qwen2.5:7b    - Balanced (4.7 GB) ← Good for indexing
+# - qwen2.5:14b   - High quality (9.0 GB) ← Recommended default
+# - qwen2.5:32b   - Very high quality (20 GB) ← For queries
+# - qwen2.5:72b   - Best quality (43 GB) ← Production queries
+#
+# Qwen2.5-Coder Series (Specialized for code):
+# - qwen2.5-coder:7b
+# - qwen2.5-coder:32b
+#
+# Note: All Qwen models support both English and Chinese excellently
+
+# =============================================================================
+# CONFIGURATION 1: Balanced (Recommended)
+# =============================================================================
+
+models:
+  default_chat_model:
+    type: ollama_chat
+    model: qwen2.5:14b  # 14B model, excellent quality
+    api_base: http://localhost:11434/v1
+    max_tokens: 4000
+    temperature: 0.0  # Deterministic for consistent extraction
+    tokens_per_minute: 0  # Unlimited for local
+    requests_per_minute: 0
+    concurrent_requests: 4
+    model_supports_json: false
+    async_mode: threaded
+
+  default_embedding_model:
+    type: ollama_embedding
+    model: bge-m3  # BGE-M3: Best for Chinese+English embeddings
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 6
+    async_mode: threaded
+
+# Standard indexing and query configuration
+chunking:
+  chunk_size: 1200
+  chunk_overlap: 100
+
+extract_graph:
+  max_gleanings: 1
+
+community_reports:
+  max_length: 2000
+  max_input_length: 8000
+
+# =============================================================================
+# CONFIGURATION 2: Optimized for Chinese Content (中文优化)
+# =============================================================================
+
+# models:
+#   # 使用 Qwen2.5 14B 用于高质量中文处理
+#   default_chat_model:
+#     type: ollama_chat
+#     model: qwen2.5:14b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 4000
+#     temperature: 0.0
+#     concurrent_requests: 4
+#     async_mode: threaded
+#
+#   # 使用 BGE-M3 嵌入模型 (中文优化)
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: bge-m3  # 1024维, 对中文特别优化
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 6
+#     async_mode: threaded
+#
+# chunking:
+#   chunk_size: 800  # 中文字符密度更高，可以用更小的 chunk
+#   chunk_overlap: 80
+#
+# community_reports:
+#   max_length: 1500  # 中文表达更简洁
+#   max_input_length: 6000
+
+# =============================================================================
+# CONFIGURATION 3: Different Models for Index vs Query
+# =============================================================================
+
+# models:
+#   # 索引使用较小的 7B 模型 (快速)
+#   index_chat:
+#     type: ollama_chat
+#     model: qwen2.5:7b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 2000
+#     temperature: 0.0
+#     concurrent_requests: 8
+#     async_mode: threaded
+#
+#   # 查询使用更大的 32B 模型 (高质量)
+#   query_chat:
+#     type: ollama_chat
+#     model: qwen2.5:32b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 4000
+#     temperature: 0.1
+#     concurrent_requests: 2
+#     async_mode: threaded
+#
+#   # 共享的嵌入模型
+#   shared_embedding:
+#     type: ollama_embedding
+#     model: bge-m3
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 6
+#     async_mode: threaded
+#
+#   # 默认使用查询模型
+#   default_chat_model:
+#     type: ollama_chat
+#     model: qwen2.5:32b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 4000
+#     temperature: 0.1
+#     concurrent_requests: 2
+#     async_mode: threaded
+#
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: bge-m3
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 6
+#     async_mode: threaded
+#
+# # 索引配置 (使用快速的 7B 模型)
+# extract_graph:
+#   model_id: index_chat
+#
+# summarize_descriptions:
+#   model_id: index_chat
+#
+# community_reports:
+#   model_id: index_chat
+#
+# embed_text:
+#   model_id: shared_embedding
+#
+# # 查询配置 (使用高质量的 32B 模型)
+# local_search:
+#   chat_model_id: query_chat
+#   embedding_model_id: shared_embedding
+#
+# global_search:
+#   chat_model_id: query_chat
+
+# =============================================================================
+# CONFIGURATION 4: Hybrid Cloud-Local (混合云本地)
+# =============================================================================
+
+# models:
+#   # 本地 Qwen 用于索引 (免费)
+#   local_qwen:
+#     type: ollama_chat
+#     model: qwen2.5:14b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 2000
+#     temperature: 0.0
+#     concurrent_requests: 6
+#     async_mode: threaded
+#
+#   # 云端 GPT-4 用于查询 (付费，高质量)
+#   cloud_gpt4:
+#     type: openai_chat
+#     api_key: ${OPENAI_API_KEY}
+#     model: gpt-4o
+#     max_tokens: 4000
+#     temperature: 0.1
+#     concurrent_requests: 10
+#
+#   # 本地 BGE-M3 嵌入
+#   local_embedding:
+#     type: ollama_embedding
+#     model: bge-m3
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 8
+#
+#   # 云端 OpenAI 嵌入
+#   cloud_embedding:
+#     type: openai_embedding
+#     api_key: ${OPENAI_API_KEY}
+#     model: text-embedding-3-large
+#     concurrent_requests: 10
+#
+#   default_chat_model:
+#     type: openai_chat
+#     api_key: ${OPENAI_API_KEY}
+#     model: gpt-4o
+#
+#   default_embedding_model:
+#     type: openai_embedding
+#     api_key: ${OPENAI_API_KEY}
+#     model: text-embedding-3-large
+#
+# # 索引使用本地模型
+# extract_graph:
+#   model_id: local_qwen
+#
+# embed_text:
+#   model_id: local_embedding
+#
+# # 查询使用云端模型
+# local_search:
+#   chat_model_id: cloud_gpt4
+#   embedding_model_id: cloud_embedding
+
+# =============================================================================
+# SETUP INSTRUCTIONS (设置说明)
+# =============================================================================
+
+# 1. 安装 Ollama:
+#    curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. 拉取 Qwen 模型 (根据硬件选择):
+#
+#    # 8GB 内存
+#    ollama pull qwen2.5:7b
+#
+#    # 16GB 内存 (推荐)
+#    ollama pull qwen2.5:14b
+#
+#    # 32GB+ 内存
+#    ollama pull qwen2.5:32b
+#
+#    # 64GB+ 内存 (最佳质量)
+#    ollama pull qwen2.5:72b
+
+# 3. 拉取嵌入模型:
+#
+#    # BGE-M3 (中文优化，推荐)
+#    ollama pull bge-m3
+#
+#    # 或者使用其他嵌入模型:
+#    ollama pull nomic-embed-text  # 通用，质量好
+#    ollama pull mxbai-embed-large  # 高质量英文
+
+# 4. 验证模型:
+#    ollama list
+
+# 5. 使用配置:
+#    cp examples/ollama_qwen_setup.yml ./your_project/settings.yml
+
+# 6. 运行 GraphRAG:
+#    # 构建索引
+#    python -m graphrag.index --root ./your_project
+#
+#    # 查询
+#    python -m graphrag.query --root ./your_project --method local "你的问题"
+
+# =============================================================================
+# EMBEDDING MODEL RECOMMENDATIONS FOR QWEN (嵌入模型推荐)
+# =============================================================================
+
+# 最佳中文嵌入模型:
+# 1. bge-m3 (推荐)
+#    - 1024 维
+#    - 对中文和英文都有优秀支持
+#    - 多语言能力强
+#    ollama pull bge-m3
+#
+# 2. bge-large-zh-v1.5 (中文专用)
+#    - 1024 维
+#    - 专门为中文优化
+#    ollama pull bge-large-zh-v1.5
+#
+# 3. nomic-embed-text (通用)
+#    - 768 维
+#    - 英文为主，中文支持一般
+#    ollama pull nomic-embed-text
+
+# =============================================================================
+# PERFORMANCE TIPS (性能优化建议)
+# =============================================================================
+
+# 1. 内存不足时:
+#    - 使用 qwen2.5:7b 或更小的模型
+#    - 减少 concurrent_requests
+#    - 使用更小的嵌入模型 (nomic-embed-text)
+
+# 2. 加速索引:
+#    - 增加 concurrent_requests (如果内存充足)
+#    - 使用较小的模型用于索引
+#    - 减少 max_gleanings
+
+# 3. 提高质量:
+#    - 使用 qwen2.5:32b 或 72b
+#    - 增加 max_gleanings
+#    - 使用 bge-m3 嵌入模型
+
+# 4. 中文优化:
+#    - chunk_size 可以设置得更小 (800-1000)
+#    - 使用 BGE 系列嵌入模型
+#    - temperature 设置为 0.0 以获得更一致的结果
+
+# =============================================================================
+# USE CASES (使用场景)
+# =============================================================================
+
+# Scenario 1: 完全本地的中文知识图谱
+# - Chat: qwen2.5:14b
+# - Embedding: bge-m3
+# - 成本: 0 (仅电费)
+# - 隐私: 完全本地，数据不出本地
+
+# Scenario 2: 成本优化的混合方案
+# - 索引: qwen2.5:7b (本地，免费)
+# - 查询: GPT-4 (云端，高质量)
+# - 成本节省: 50-70%
+
+# Scenario 3: 代码知识库
+# - Chat: qwen2.5-coder:7b 或 32b
+# - Embedding: nomic-embed-text
+# - 用途: 代码库分析和问答
+
+# =============================================================================
+# TROUBLESHOOTING (故障排除)
+# =============================================================================
+
+# 问题: 内存不足 (Out of Memory)
+# 解决:
+#   - 使用更小的模型: qwen2.5:7b 或 3b
+#   - 减少 concurrent_requests 到 2
+#   - 关闭其他应用程序
+
+# 问题: 中文乱码或质量差
+# 解决:
+#   - 确保使用 qwen2.5 系列 (不是 qwen1 或 qwen2)
+#   - 使用 BGE 系列嵌入模型
+#   - 检查输入文本编码 (应该是 UTF-8)
+
+# 问题: 速度慢
+# 解决:
+#   - 使用更小的模型 (qwen2.5:7b)
+#   - 确保 Ollama 使用 GPU
+#   - 增加 concurrent_requests
+
+# 问题: 找不到模型
+# 解决:
+#   ollama pull qwen2.5:14b
+#   ollama pull bge-m3
+#   ollama list  # 验证
+
+# =============================================================================
+# ADDITIONAL RESOURCES (其他资源)
+# =============================================================================
+
+# - Qwen 官方: https://github.com/QwenLM/Qwen2.5
+# - BGE 模型: https://github.com/FlagOpen/FlagEmbedding
+# - Ollama 文档: https://github.com/ollama/ollama
+# - GraphRAG 文档: https://microsoft.github.io/graphrag/
+
+# Chinese-specific resources (中文资源):
+# - Qwen2.5 中文文档: https://qwenlm.github.io/zh/
+# - BGE 中文文档: https://github.com/FlagOpen/FlagEmbedding/blob/master/README_zh.md

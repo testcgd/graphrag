@@ -45,6 +45,10 @@ ollama pull qwen2.5:14b       # Good multilingual support
 ollama pull nomic-embed-text  # Recommended (768 dimensions)
 ollama pull mxbai-embed-large # High quality (1024 dimensions)
 ollama pull all-minilm        # Fast, smaller (384 dimensions)
+
+# Multilingual/Chinese optimized:
+ollama pull bge-m3            # Excellent for Chinese+English (1024 dimensions)
+ollama pull paraphrase-multilingual  # 50+ languages (768 dimensions)
 ```
 
 ### 3. Start Ollama
@@ -194,9 +198,23 @@ models:
 - **Chat**: `llama3.2:1b` or `phi3`
 - **Embedding**: `all-minilm`
 
-### Multilingual
+### Multilingual (English + Other Languages)
 - **Chat**: `qwen2.5:14b` (excellent for Chinese, Japanese, Korean, etc.)
-- **Embedding**: `nomic-embed-text` (supports multiple languages)
+- **Embedding**: `bge-m3` or `paraphrase-multilingual`
+
+### Chinese-Optimized (中文优化)
+- **Chat**: `qwen2.5:14b` or `qwen2.5:32b`
+- **Embedding**: `bge-m3` (best for Chinese+English mixed content)
+
+### Embedding Model Comparison
+
+| Model | Dimensions | Size | Speed | Quality | Best For |
+|-------|-----------|------|-------|---------|----------|
+| all-minilm | 384 | 23 MB | ★★★★★ | ★★★☆☆ | Speed, low resource |
+| nomic-embed-text | 768 | 274 MB | ★★★★☆ | ★★★★☆ | General purpose (recommended) |
+| mxbai-embed-large | 1024 | 669 MB | ★★★☆☆ | ★★★★★ | English, high quality |
+| bge-m3 | 1024 | 2.3 GB | ★★★☆☆ | ★★★★★ | Multilingual, Chinese |
+| paraphrase-multilingual | 768 | 471 MB | ★★★★☆ | ★★★★☆ | 50+ languages |
 
 ## Troubleshooting
 
@@ -391,9 +409,33 @@ local_search:
 - `examples/hybrid_cloud_local.yml` - Local indexing, cloud querying
 - `examples/CONFIGURE_DIFFERENT_MODELS.md` - Complete guide
 
+## Additional Configuration Examples
+
+We provide several specialized configuration examples:
+
+### General Local Setup
+- **`ollama_settings.yml`** - Basic Ollama configuration
+- **`ollama_mixed_models.yml`** - Different models for indexing vs querying
+- **`hybrid_cloud_local.yml`** - Hybrid cloud-local setup
+
+### Specialized Configurations
+- **`ollama_embedding_models.yml`** - Comprehensive guide to all embedding models
+  - Covers: nomic-embed-text, mxbai-embed-large, bge-m3, all-minilm, etc.
+  - Includes: Performance comparison, use case recommendations
+
+- **`ollama_qwen_setup.yml`** - Qwen (通义千问) optimized configuration
+  - Best for: Chinese and multilingual content
+  - Models: qwen2.5 series (7b, 14b, 32b, 72b)
+  - Embeddings: bge-m3 (Chinese-optimized)
+
+### Documentation
+- **`CONFIGURE_DIFFERENT_MODELS.md`** - Complete guide to model separation
+- **`OLLAMA_SETUP.md`** - This file
+
 ## Additional Resources
 
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [Ollama Model Library](https://ollama.ai/library)
 - [GraphRAG Documentation](https://microsoft.github.io/graphrag/)
-- [Configure Different Models Guide](./CONFIGURE_DIFFERENT_MODELS.md)
+- [Qwen Models](https://github.com/QwenLM/Qwen2.5)
+- [BGE Embeddings](https://github.com/FlagOpen/FlagEmbedding)

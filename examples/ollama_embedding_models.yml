@@ -1,0 +1,331 @@
+# Example: Different Embedding Models for GraphRAG with Ollama
+#
+# This configuration showcases various embedding models available in Ollama
+# and how to use them with GraphRAG for optimal performance.
+#
+# Embedding models create vector representations of text for semantic search.
+# Different models offer trade-offs between:
+# - Quality (accuracy of semantic similarity)
+# - Speed (inference time)
+# - Size (dimensions, memory usage)
+# - Language support
+
+# =============================================================================
+# POPULAR EMBEDDING MODELS IN OLLAMA
+# =============================================================================
+#
+# Model Comparison:
+#
+# 1. nomic-embed-text (Recommended Default)
+#    - Dimensions: 768
+#    - Size: ~274 MB
+#    - Quality: Excellent
+#    - Speed: Fast
+#    - Languages: English-focused, some multilingual
+#    - Best for: General purpose, balanced performance
+#
+# 2. mxbai-embed-large
+#    - Dimensions: 1024
+#    - Size: ~669 MB
+#    - Quality: Best
+#    - Speed: Medium
+#    - Languages: English-focused
+#    - Best for: High-quality applications, when quality > speed
+#
+# 3. snowflake-arctic-embed
+#    - Dimensions: 1024
+#    - Size: ~669 MB
+#    - Quality: Excellent
+#    - Speed: Medium-Fast
+#    - Languages: English
+#    - Best for: Retrieval tasks, high precision
+#
+# 4. all-minilm (all-minilm:l6-v2)
+#    - Dimensions: 384
+#    - Size: ~23 MB
+#    - Quality: Good
+#    - Speed: Very Fast
+#    - Languages: English
+#    - Best for: Speed-critical apps, resource-constrained
+#
+# 5. bge-m3 (Chinese-friendly)
+#    - Dimensions: 1024
+#    - Size: ~2.3 GB
+#    - Quality: Excellent
+#    - Speed: Medium
+#    - Languages: Multilingual (strong Chinese support)
+#    - Best for: Multilingual content, especially Chinese
+#
+# 6. paraphrase-multilingual
+#    - Dimensions: 768
+#    - Size: ~471 MB
+#    - Quality: Good
+#    - Speed: Fast
+#    - Languages: 50+ languages
+#    - Best for: True multilingual applications
+#
+# 7. bge-large-en-v1.5
+#    - Dimensions: 1024
+#    - Size: ~1.34 GB
+#    - Quality: Excellent
+#    - Speed: Medium
+#    - Languages: English
+#    - Best for: English-only, high quality
+#
+# Note: Gemma models are primarily LLMs (chat), not embedding models.
+# For embeddings with Google-like quality, use bge-* or nomic-embed-text.
+
+# =============================================================================
+# CONFIGURATION EXAMPLES
+# =============================================================================
+
+# --- EXAMPLE 1: Default Recommended Setup ---
+# Best balance of quality, speed, and compatibility
+
+models:
+  default_chat_model:
+    type: ollama_chat
+    model: qwen2.5:14b  # Excellent multilingual chat model
+    api_base: http://localhost:11434/v1
+    max_tokens: 4000
+    temperature: 0.0
+    concurrent_requests: 4
+    async_mode: threaded
+
+  default_embedding_model:
+    type: ollama_embedding
+    model: nomic-embed-text  # Recommended default
+    api_base: http://localhost:11434/v1
+    concurrent_requests: 8
+    async_mode: threaded
+
+# --- EXAMPLE 2: High-Quality English Setup ---
+# Maximum quality for English content
+
+# models:
+#   default_chat_model:
+#     type: ollama_chat
+#     model: llama3.1:70b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 4000
+#     temperature: 0.0
+#     concurrent_requests: 2
+#     async_mode: threaded
+#
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: mxbai-embed-large  # Highest quality, 1024 dims
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#     async_mode: threaded
+
+# --- EXAMPLE 3: Fast, Resource-Efficient Setup ---
+# For limited hardware or speed-critical applications
+
+# models:
+#   default_chat_model:
+#     type: ollama_chat
+#     model: llama3.2:3b
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 2000
+#     temperature: 0.0
+#     concurrent_requests: 8
+#     async_mode: threaded
+#
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: all-minilm  # Smallest, fastest, 384 dims
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 16
+#     async_mode: threaded
+
+# --- EXAMPLE 4: Multilingual (Chinese + English) ---
+# Optimized for Chinese and other languages
+
+# models:
+#   default_chat_model:
+#     type: ollama_chat
+#     model: qwen2.5:14b  # Excellent Chinese support
+#     api_base: http://localhost:11434/v1
+#     max_tokens: 4000
+#     temperature: 0.0
+#     concurrent_requests: 4
+#     async_mode: threaded
+#
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: bge-m3  # Strong multilingual, especially Chinese
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#     async_mode: threaded
+
+# --- EXAMPLE 5: Different Embeddings for Index vs Query ---
+# Use fast embeddings for indexing, quality for querying
+
+# models:
+#   # Chat models
+#   index_chat:
+#     type: ollama_chat
+#     model: qwen2.5:7b
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 8
+#
+#   query_chat:
+#     type: ollama_chat
+#     model: qwen2.5:14b
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#
+#   # Embedding models
+#   index_embedding:
+#     type: ollama_embedding
+#     model: all-minilm  # Fast for bulk indexing
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 16
+#
+#   query_embedding:
+#     type: ollama_embedding
+#     model: mxbai-embed-large  # Quality for queries
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#
+#   # Defaults (used by queries)
+#   default_chat_model:
+#     type: ollama_chat
+#     model: qwen2.5:14b
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#
+#   default_embedding_model:
+#     type: ollama_embedding
+#     model: mxbai-embed-large
+#     api_base: http://localhost:11434/v1
+#     concurrent_requests: 4
+#
+# # Indexing configuration
+# embed_text:
+#   model_id: index_embedding  # Fast embedding
+#
+# # Query configuration
+# local_search:
+#   chat_model_id: query_chat
+#   embedding_model_id: query_embedding  # Quality embedding
+
+# =============================================================================
+# SETUP INSTRUCTIONS
+# =============================================================================
+
+# 1. Pull the embedding model you want to use:
+#
+#    # Recommended default
+#    ollama pull nomic-embed-text
+#
+#    # High quality
+#    ollama pull mxbai-embed-large
+#
+#    # Fast and small
+#    ollama pull all-minilm
+#
+#    # Multilingual (Chinese-friendly)
+#    ollama pull bge-m3
+#
+#    # Multilingual (50+ languages)
+#    ollama pull paraphrase-multilingual
+#
+#    # High quality English
+#    ollama pull bge-large-en-v1.5
+#
+#    # Retrieval-optimized
+#    ollama pull snowflake-arctic-embed
+
+# 2. Pull chat models (for LLM operations):
+#
+#    # Qwen (excellent multilingual, especially Chinese)
+#    ollama pull qwen2.5:7b
+#    ollama pull qwen2.5:14b
+#    ollama pull qwen2.5:32b
+#
+#    # Llama (strong English)
+#    ollama pull llama3.2
+#    ollama pull llama3.1:70b
+#
+#    # Mistral (efficient)
+#    ollama pull mistral
+#
+#    # Gemma (Google's model - for chat, not embeddings)
+#    ollama pull gemma2:9b
+#    ollama pull gemma2:27b
+
+# 3. Verify models are available:
+#    ollama list
+
+# 4. Use this config file:
+#    cp examples/ollama_embedding_models.yml ./your_project/settings.yml
+
+# 5. Run GraphRAG:
+#    python -m graphrag.index --root ./your_project
+
+# =============================================================================
+# CHOOSING THE RIGHT EMBEDDING MODEL
+# =============================================================================
+
+# For English-only content:
+# - Best quality: mxbai-embed-large (1024 dims)
+# - Best balance: nomic-embed-text (768 dims)
+# - Fastest: all-minilm (384 dims)
+
+# For Multilingual (including Chinese):
+# - Best: bge-m3 (1024 dims, strong Chinese)
+# - Good: paraphrase-multilingual (768 dims, 50+ languages)
+
+# For RAG specifically:
+# - Retrieval tasks: snowflake-arctic-embed or mxbai-embed-large
+# - General purpose: nomic-embed-text (recommended)
+# - Speed critical: all-minilm
+
+# Note on Qwen:
+# - Qwen2.5 models (7b, 14b, 32b, 72b) are LLMs for chat/generation
+# - Use them as chat models, not embedding models
+# - For Qwen ecosystem embeddings, use bge-m3 (same org, optimized for Chinese)
+
+# Note on Gemma:
+# - Gemma2 models (2b, 9b, 27b) are LLMs for chat/generation
+# - Google doesn't provide Gemma embedding models
+# - For similar quality, use nomic-embed-text or mxbai-embed-large
+
+# =============================================================================
+# PERFORMANCE COMPARISON
+# =============================================================================
+
+# Benchmark (approximate, on M1 Mac):
+#
+# Model                    | Dims | Tokens/sec | Quality | Memory
+# -------------------------|------|------------|---------|--------
+# all-minilm              | 384  | ~5000      | ★★★☆☆  | 23 MB
+# nomic-embed-text        | 768  | ~3000      | ★★★★☆  | 274 MB
+# mxbai-embed-large       | 1024 | ~1500      | ★★★★★  | 669 MB
+# snowflake-arctic-embed  | 1024 | ~2000      | ★★★★★  | 669 MB
+# bge-m3                  | 1024 | ~1200      | ★★★★★  | 2.3 GB
+# bge-large-en-v1.5       | 1024 | ~1000      | ★★★★★  | 1.34 GB
+
+# =============================================================================
+# TROUBLESHOOTING
+# =============================================================================
+
+# Model not found:
+#   ollama pull <model-name>
+
+# Out of memory:
+#   - Use smaller embedding model (all-minilm)
+#   - Reduce concurrent_requests
+#   - Reduce batch_size in embed_text config
+
+# Slow embedding:
+#   - Use faster model (all-minilm or nomic-embed-text)
+#   - Increase concurrent_requests
+#   - Ensure Ollama is using GPU
+
+# Poor search quality:
+#   - Use higher quality model (mxbai-embed-large)
+#   - Ensure same embedding model for index and query
+#   - Check if multilingual model needed
