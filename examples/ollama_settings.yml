@@ -1,0 +1,64 @@
+# Example configuration for using local Ollama models with GraphRAG
+#
+# Prerequisites:
+# 1. Install Ollama: https://ollama.ai
+# 2. Pull the models you want to use:
+#    ollama pull llama3.2
+#    ollama pull nomic-embed-text
+# 3. Start Ollama server (usually runs automatically)
+#
+# This configuration uses:
+# - Ollama's llama3.2 model for chat completion
+# - Ollama's nomic-embed-text model for embeddings
+#
+# No API key is required for local Ollama models
+
+models:
+  default_chat_model:
+    type: ollama_chat
+    # The model name as it appears in Ollama (run 'ollama list' to see available models)
+    model: llama3.2
+    # Ollama default endpoint - change if running on different host/port
+    api_base: http://localhost:11434/v1
+    # API key is not required for Ollama, but can be set to any value
+    # api_key: not_required
+    # Model parameters
+    max_tokens: 4000
+    temperature: 0.0
+    # Ollama doesn't have rate limits for local models
+    tokens_per_minute: 0  # 0 means unlimited
+    requests_per_minute: 0  # 0 means unlimited
+    # Most Ollama models don't support JSON mode
+    model_supports_json: false
+    concurrent_requests: 4
+    async_mode: threaded
+
+  default_embedding_model:
+    type: ollama_embedding
+    # Popular embedding models for Ollama:
+    # - nomic-embed-text (recommended, 768 dimensions)
+    # - mxbai-embed-large (1024 dimensions)
+    # - all-minilm (384 dimensions, faster but less accurate)
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+    # api_key: not_required
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 4
+    async_mode: threaded
+
+# Optional: Configure other GraphRAG settings
+chunking:
+  chunk_size: 1200
+  chunk_overlap: 100
+
+entity_extraction:
+  max_gleanings: 1
+
+community_reports:
+  max_length: 2000
+  max_input_length: 8000
+
+# Optional: Enable claims extraction
+# extract_claims:
+#   enabled: true

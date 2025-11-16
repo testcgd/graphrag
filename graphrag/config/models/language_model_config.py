@@ -36,11 +36,17 @@ class LanguageModelConfig(BaseModel):
         when one is not expected such as the case of using Azure
         Managed Identity.
 
+        Ollama models do not require an API key, so we skip validation for them.
+
         Raises
         ------
         ApiKeyMissingError
             If the API key is missing and is required.
         """
+        # Ollama models don't require API keys
+        if self.type in (ModelType.OllamaChat, ModelType.OllamaEmbedding):
+            return
+
         if self.auth_type == AuthType.APIKey and (
             self.api_key is None or self.api_key.strip() == ""
         ):
