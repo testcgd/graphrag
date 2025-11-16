@@ -28,6 +28,11 @@ build.zip
 
 __pycache__
 
+# UV package manager
+.uv-cache/
+uv.lock
+# Note: .python-version is tracked in repo for team consistency
+
 .pipeline
 
 # Azurite

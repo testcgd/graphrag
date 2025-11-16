@@ -268,3 +268,39 @@ asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 timeout = 1000
 env_files = [".env"]
+
+# =============================================================================
+# UV Configuration
+# =============================================================================
+# uv is a modern, fast Python package manager that can replace or complement Poetry
+# Install: curl -LsSf https://astral.sh/uv/install.sh | sh
+#
+# Usage with this project:
+#   uv pip install -e .              # Install in editable mode
+#   uv pip install -e ".[dev]"       # Install with dev dependencies
+#   uv pip sync requirements.txt      # Sync from requirements file
+#   uv run pytest                     # Run pytest in isolated environment
+#
+# Note: This project uses Poetry for dependency management, but uv can be used
+# for faster installation and resolution.
+
+[tool.uv]
+# Python version constraint (matches Poetry setting)
+python-version = ">=3.10,<3.13"
+
+# Cache directory for uv
+cache-dir = ".uv-cache"
+
+# uv.pip configuration
+[tool.uv.pip]
+# Enable universal dependency resolution
+universal = false
+
+# Pre-release handling
+prerelease = "if-necessary"
+
+# Resolution strategy: "highest" (latest compatible) or "lowest" (minimal versions)
+resolution = "highest"
+
+# Compile bytecode after installation
+compile-bytecode = true

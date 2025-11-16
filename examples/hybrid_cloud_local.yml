@@ -4,9 +4,17 @@
 # - Use FREE local Ollama models for indexing (one-time, bulk operations)
 # - Use PAID cloud models (OpenAI/Azure) for querying (ongoing, quality-critical)
 #
+# ⚠️  CRITICAL: Embedding models MUST be the same for indexing and querying!
+# ⚠️  You CANNOT mix Ollama embeddings with OpenAI embeddings!
+# ⚠️  Different embedding models have different dimensions and semantic spaces.
+#
+# This example shows TWO options:
+# Option A: Use local embeddings for both (fully free indexing + querying)
+# Option B: Use cloud embeddings for both (pay for embeddings, save on chat)
+#
 # Benefits:
-# - Minimize API costs by avoiding expensive indexing operations
-# - Maintain high-quality query responses with production-grade models
+# - Minimize API costs by avoiding expensive chat model usage during indexing
+# - Maintain high-quality query responses with production-grade chat models
 # - Faster indexing with local GPU acceleration
 # - No cloud API rate limits during indexing
 
@@ -54,15 +62,37 @@ models:
 
   local_embedding_model:
     type: ollama_embedding
-    model: nomic-embed-text
+    model: nomic-embed-text  # 768 dimensions
     api_base: http://localhost:11434/v1
     tokens_per_minute: 0
     requests_per_minute: 0
     concurrent_requests: 8
     async_mode: threaded
 
+  # --- OPTION A: Use local embeddings (Recommended for cost savings) ---
+  # Same embedding model for both index and query (REQUIRED!)
+  shared_local_embedding:
+    type: ollama_embedding
+    model: nomic-embed-text  # Must be same for index AND query!
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 8
+    async_mode: threaded
+
+  # --- OPTION B: Use cloud embeddings (Alternative) ---
+  # If you prefer cloud embeddings, use the same model for both index and query
+  shared_cloud_embedding:
+    type: openai_embedding
+    api_key: ${OPENAI_API_KEY}
+    model: text-embedding-3-small  # Cheaper than large, still good quality
+    tokens_per_minute: 1000000
+    requests_per_minute: 3000
+    concurrent_requests: 10
+    async_mode: threaded
+
   # --- Default Models ---
-  # Point to cloud models so queries use high-quality models by default
+  # Using Option A: Local embeddings, Cloud chat
 
   default_chat_model:
     type: openai_chat
@@ -77,13 +107,17 @@ models:
     async_mode: threaded
 
   default_embedding_model:
-    type: openai_embedding
-    api_key: ${OPENAI_API_KEY}
-    model: text-embedding-3-large
-    tokens_per_minute: 1000000
-    requests_per_minute: 3000
-    concurrent_requests: 10
+    type: ollama_embedding  # OPTION A: Use local (FREE)
+    model: nomic-embed-text
+    api_base: http://localhost:11434/v1
+    tokens_per_minute: 0
+    requests_per_minute: 0
+    concurrent_requests: 8
     async_mode: threaded
+    # OPTION B: Uncomment below to use cloud embeddings instead
+    # type: openai_embedding
+    # api_key: ${OPENAI_API_KEY}
+    # model: text-embedding-3-small
 
 # =============================================================================
 # INDEXING CONFIGURATION (Uses Local Ollama Models)
@@ -106,16 +140,20 @@ extract_claims:
   model_id: local_chat_model  # FREE: Use local Ollama
 
 embed_text:
-  model_id: local_embedding_model  # FREE: Use local Ollama embeddings
+  # ⚠️ CRITICAL: This embedding model MUST match the one used in queries!
+  model_id: shared_local_embedding  # OPTION A: FREE local embeddings
+  # model_id: shared_cloud_embedding  # OPTION B: PAID cloud embeddings
   batch_size: 16
 
 # =============================================================================
-# QUERY CONFIGURATION (Uses Cloud OpenAI Models)
+# QUERY CONFIGURATION (Uses Cloud Chat + Same Embeddings as Index)
 # =============================================================================
 
 local_search:
   chat_model_id: cloud_chat_model  # PAID: Use GPT-4 for best answers
-  embedding_model_id: cloud_embedding_model  # PAID: Use OpenAI embeddings
+  # ⚠️ CRITICAL: Must use SAME embedding as in embed_text above!
+  embedding_model_id: shared_local_embedding  # OPTION A: FREE (matches index)
+  # embedding_model_id: shared_cloud_embedding  # OPTION B: PAID (if using cloud for index)
   text_unit_prop: 0.5
   community_prop: 0.1
   top_k_entities: 10
@@ -131,10 +169,60 @@ global_search:
 
 drift_search:
   chat_model_id: cloud_chat_model  # PAID: Use GPT-4 for follow-ups
-  embedding_model_id: cloud_embedding_model
+  # ⚠️ CRITICAL: Must use SAME embedding as in embed_text above!
+  embedding_model_id: shared_local_embedding  # OPTION A: FREE (matches index)
+  # embedding_model_id: shared_cloud_embedding  # OPTION B: PAID (if using cloud for index)
   n_depth: 2
   drift_k_followups: 5
 
+# =============================================================================
+# CRITICAL: EMBEDDING MODEL COMPATIBILITY
+# =============================================================================
+#
+# ⚠️  YOU CANNOT MIX DIFFERENT EMBEDDING MODELS!
+#
+# Why? Three reasons:
+#
+# 1. DIMENSION MISMATCH:
+#    - OpenAI text-embedding-3-large: 3072 dimensions
+#    - OpenAI text-embedding-3-small: 1536 dimensions
+#    - Ollama nomic-embed-text: 768 dimensions
+#    - Ollama mxbai-embed-large: 1024 dimensions
+#    - Ollama bge-m3: 1024 dimensions
+#
+#    If you index with 768-dim embeddings and query with 3072-dim,
+#    the vector search will FAIL (cannot compare different dimensions).
+#
+# 2. SEMANTIC SPACE MISMATCH:
+#    Even if dimensions match, each model creates a different semantic space.
+#    Text embedded by nomic-embed-text cannot be compared with text embedded
+#    by OpenAI embeddings - they're in completely different mathematical spaces.
+#
+# 3. GRAPHRAG REQUIREMENT:
+#    GraphRAG stores embeddings during indexing and uses them for similarity
+#    search during querying. Both MUST use the exact same embedding model.
+#
+# CORRECT CONFIGURATIONS:
+#
+# ✅ Option A (Recommended - Maximum Cost Savings):
+#    Index: Local Ollama chat + Local Ollama embeddings (FREE)
+#    Query: Cloud GPT-4 chat + Local Ollama embeddings (FREE embeddings)
+#    Cost: Only pay for GPT-4 query calls, embeddings are free
+#
+# ✅ Option B (Cloud Embeddings):
+#    Index: Local Ollama chat + Cloud OpenAI embeddings (PAID)
+#    Query: Cloud GPT-4 chat + Cloud OpenAI embeddings (PAID)
+#    Cost: Pay for embeddings during index + query, but embeddings are cheap
+#
+# ❌ WRONG (Will NOT work):
+#    Index: Local Ollama embeddings
+#    Query: Cloud OpenAI embeddings
+#    Result: Complete search failure - vectors are incompatible!
+#
+# THIS CONFIG USES OPTION A by default (see model_id references above).
+# To use Option B, uncomment the shared_cloud_embedding lines and update
+# the model_id references in embed_text and search configurations.
+#
 # =============================================================================
 # NOTES & SETUP
 # =============================================================================
